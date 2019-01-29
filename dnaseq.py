@@ -31,27 +31,57 @@ class Multidict:
 # and their hashes.  (What else do you need to know about each
 # subsequence?)
 def subsequenceHashes(seq, k):
-    rs = RollingHash(s[:k])
+    try:
+        assert k > 0
 
-    seq_to_hash = {}
-    seq_to_hash[s[:k]] = rs.current_hash()
-
-    for i in range(0, len(s) - k):
-        rs.slide(s[i], s[k + i + 1])
-        seq_to_hash[s[i:k+i+1]] = rs.current_hash()
+        subseq = ''
+        for i in range(0, k):
+            subseq += seq.next()
+        rh = RollingHash(subseq)
+        pos = 0
+        while true:
+            yield (rh.hash(), (pos, subseq))
+            previtem = subseq[0]
+            subseq = subseq[1:] + seq.next()
+            rh.slide(previtem, subseq[-1:])
+            pos += 1
+    except StopIteration:
+        return
 
 # Similar to subsequenceHashes(), but returns one k-length subsequence
 # every m nucleotides.  (This will be useful when you try to use two
 # whole data files.)
 def intervalSubsequenceHashes(seq, k, m):
-    raise Exception("Not implemented!")
+    assert m >= k
+    try:
+        subseq = ''
+        pos = 0
+
+        for i in range(0, k):
+            subseq += seq.next()
+
+        rh = RollingHash(subseq)
+        yield (rh.current_hash(), (pos, subseq))
+
+        for i in range(0, m - k):
+            seq.next()
+
+        pos += m
+    except StopIteration:
+        return
 
 # Searches for commonalities between sequences a and b by comparing
 # subsequences of length k.  The sequences a and b should be iterators
 # that return nucleotides.  The table is built by computing one hash
 # every m nucleotides (for m >= k).
 def getExactSubmatches(a, b, k, m):
-    raise Exception("Not implemented!")
+    atbl = Multidict(intervalSubsequenceHashes(a, k, m))
+    for hashval, (bpos, bseq) in intervalSubsequenceHashes(b, k, m):
+        for apos, aseq in atbl.get(hashval):
+            if aseq != bseq:
+                continue
+            yield (apos, bpos)
+    return
 
 if __name__ == '__main__':
     if len(sys.argv) != 4:
